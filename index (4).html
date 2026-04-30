@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unattended Object Detection System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red:    #ff2a2a;
+      --amber:  #ffb800;
+      --green:  #00e87a;
+      --dim:    #0a0d0f;
+      --panel:  #0e1215;
+      --border: #1e2830;
+      --text:   #c8d8e0;
+      --mono:   'Share Tech Mono', monospace;
+      --sans:   'Rajdhani', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--dim);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── SCANLINE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.07) 2px,
+        rgba(0,0,0,0.07) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: relative;
+      padding: 80px 24px 60px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255,42,42,0.12), transparent),
+        radial-gradient(ellipse 50% 40% at 80% 100%, rgba(0,232,122,0.06), transparent);
+      pointer-events: none;
+    }
+
+    .badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--red);
+      border: 1px solid var(--red);
+      padding: 4px 14px;
+      margin-bottom: 28px;
+      animation: pulse-border 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { border-color: var(--red); color: var(--red); }
+      50%       { border-color: rgba(255,42,42,0.3); color: rgba(255,42,42,0.5); }
+    }
+
+    h1 {
+      font-family: var(--sans);
+      font-size: clamp(2rem, 6vw, 4rem);
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      line-height: 1.1;
+      color: #fff;
+    }
+
+    h1 span { color: var(--red); }
+
+    .subtitle {
+      margin-top: 16px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #5a7080;
+      letter-spacing: 1px;
+    }
+
+    .cta-group {
+      margin-top: 40px;
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      font-family: var(--mono);
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 12px 28px;
+      border: 1px solid;
+      transition: background 0.2s, color 0.2s;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--red);
+      border-color: var(--red);
+      color: #fff;
+    }
+    .btn-primary:hover { background: transparent; color: var(--red); }
+
+    .btn-secondary {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover { border-color: var(--text); }
+
+    /* ── SECTIONS ── */
+    section {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 72px 24px;
+    }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 4px;
+      color: var(--red);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #fff;
+      margin-bottom: 32px;
+    }
+
+    /* ── DEMO WINDOW ── */
+    .demo-window {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 48px;
+    }
+
+    .demo-titlebar {
+      background: #0a0d10;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-red    { background: var(--red); }
+    .dot-amber  { background: var(--amber); }
+    .dot-green  { background: var(--green); }
+
+    .demo-titlebar span {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: #3a5060;
+      margin-left: 6px;
+    }
+
+    .demo-canvas {
+      position: relative;
+      background: #060809;
+      aspect-ratio: 16/9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Simulated camera grid */
+    .demo-canvas::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(30,40,48,0.5) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30,40,48,0.5) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .corner { position: absolute; width: 20px; height: 20px; }
+    .corner-tl { top: 12px; left: 12px; border-top: 2px solid var(--red); border-left: 2px solid var(--red); }
+    .corner-tr { top: 12px; right: 12px; border-top: 2px solid var(--red); border-right: 2px solid var(--red); }
+    .corner-bl { bottom: 12px; left: 12px; border-bottom: 2px solid var(--red); border-left: 2px solid var(--red); }
+    .corner-br { bottom: 12px; right: 12px; border-bottom: 2px solid var(--red); border-right: 2px solid var(--red); }
+
+    /* Simulated bounding box */
+    .sim-box {
+      position: absolute;
+      border: 2px solid;
+      animation: box-flash 2s ease-in-out infinite;
+    }
+
+    .sim-box-safe {
+      border-color: var(--green);
+      top: 30%; left: 15%; width: 18%; height: 30%;
+    }
+
+    .sim-box-warn {
+      border-color: var(--red);
+      top: 40%; right: 20%; width: 16%; height: 28%;
+      animation: box-flash-red 1s ease-in-out infinite;
+    }
+
+    @keyframes box-flash { 0%,100%{opacity:1} 50%{opacity:0.6} }
+    @keyframes box-flash-red { 0%,100%{opacity:1;box-shadow:0 0 14px rgba(255,42,42,0.5)} 50%{opacity:0.7;box-shadow:none} }
+
+    .sim-label {
+      position: absolute;
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 2px 6px;
+      background: rgba(10,13,15,0.85);
+    }
+
+    .sim-label-safe { color: var(--green); top: calc(30% - 20px); left: 15%; border: 1px solid var(--green); }
+    .sim-label-warn { color: var(--red); top: calc(40% - 20px); right: 20%; border: 1px solid var(--red); }
+
+    .sim-timer-safe {
+      position: absolute;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--green);
+      top: calc(30% + 30% + 4px);
+      left: 15%;
+    }
+
+    .sim-warning-banner {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      background: rgba(180,0,0,0.8);
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #fff;
+      letter-spacing: 2px;
+      text-align: center;
+      padding: 8px;
+      animation: banner-pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes banner-pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+
+    .sim-hud {
+      position: absolute;
+      bottom: 10px; left: 12px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: #3a5060;
+    }
+
+    .sim-ts {
+      position: absolute;
+      top: 10px; right: 12px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: #3a5060;
+    }
+
+    /* ── FEATURE GRID ── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .feature {
+      background: var(--panel);
+      padding: 28px 24px;
+      transition: background 0.2s;
+    }
+    .feature:hover { background: #111820; }
+
+    .feature-icon {
+      font-size: 24px;
+      margin-bottom: 14px;
+    }
+
+    .feature h3 {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .feature p {
+      font-size: 13px;
+      color: #5a7080;
+      line-height: 1.6;
+    }
+
+    /* ── TECH STACK ── */
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .tech-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tech-name {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--amber);
+    }
+
+    .tech-role {
+      font-size: 13px;
+      color: #5a7080;
+    }
+
+    /* ── FLOW DIAGRAM ── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+    }
+
+    .flow-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .flow-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--red);
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .flow-line {
+      width: 1px;
+      flex: 1;
+      background: var(--border);
+      min-height: 32px;
+    }
+
+    .flow-content {
+      padding-bottom: 28px;
+    }
+
+    .flow-content h4 {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .flow-content p {
+      font-size: 13px;
+      color: #5a7080;
+      font-family: var(--mono);
+    }
+
+    /* ── CODE BLOCK ── */
+    .code-block {
+      background: #060809;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--red);
+      padding: 20px 24px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #8ab4c8;
+      overflow-x: auto;
+      line-height: 1.8;
+    }
+
+    .code-block .c { color: #3a5060; }    /* comment */
+    .code-block .k { color: var(--amber); } /* keyword */
+    .code-block .s { color: var(--green); } /* string */
+    .code-block .n { color: #c8d8e0; }    /* normal */
+
+    /* ── FUTURE ── */
+    .future-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .future-list li {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 14px;
+      color: #8aa0b0;
+      padding: 14px 18px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--border);
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .future-list li:hover {
+      border-left-color: var(--amber);
+      color: var(--text);
+    }
+
+    .future-list li::before {
+      content: '→';
+      font-family: var(--mono);
+      color: var(--amber);
+      font-size: 12px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: #2a3a44;
+    }
+
+    footer span { color: var(--red); }
+
+    /* ── DIVIDER ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── LIVE COUNTER ANIMATION ── */
+    .stat-row {
+      display: flex;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      margin-bottom: 40px;
+    }
+
+    .stat {
+      flex: 1;
+      background: var(--panel);
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: var(--mono);
+      font-size: clamp(1.6rem, 3vw, 2.4rem);
+      color: #fff;
+      display: block;
+    }
+
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: #3a5060;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .stat-value.red   { color: var(--red); }
+    .stat-value.green { color: var(--green); }
+    .stat-value.amber { color: var(--amber); }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     HEADER
+════════════════════════════════════════ -->
+<header>
+  <div class="badge">LIVE SYSTEM · AI SURVEILLANCE</div>
+  <h1>Unattended<br><span>Object Detection</span></h1>
+  <p class="subtitle">YOLOv8 · OpenCV · Python · Real-Time Tracking</p>
+  <div class="cta-group">
+    <a class="btn btn-primary" href="https://github.com/YOUR_USERNAME/unattended-object-detection">View on GitHub</a>
+    <a class="btn btn-secondary" href="#how-it-works">How It Works</a>
+  </div>
+</header>
+
+
+<!-- ════════════════════════════════════════
+     DEMO PREVIEW
+════════════════════════════════════════ -->
+<section>
+  <p class="section-label">// Live Preview</p>
+  <h2>System Output</h2>
+
+  <div class="demo-window">
+    <div class="demo-titlebar">
+      <div class="dot dot-red"></div>
+      <div class="dot dot-amber"></div>
+      <div class="dot dot-green"></div>
+      <span>camera_feed_01 — Unattended Object Detection System v1.0</span>
+    </div>
+    <div class="demo-canvas">
+      <!-- corners -->
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div>
+      <div class="corner corner-br"></div>
+
+      <!-- warning banner -->
+      <div class="sim-warning-banner">⚠ WARNING: Unattended object detected!</div>
+
+      <!-- safe object -->
+      <div class="sim-box sim-box-safe"></div>
+      <div class="sim-label sim-label-safe">backpack 87%</div>
+      <div class="sim-timer-safe">Timer: 2.4s</div>
+
+      <!-- unattended object -->
+      <div class="sim-box sim-box-warn"></div>
+      <div class="sim-label sim-label-warn">suitcase 91% · UNATTENDED!</div>
+
+      <div class="sim-ts">2026-04-30 · 14:22:11</div>
+      <div class="sim-hud">Objects tracked: 2</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-row">
+    <div class="stat">
+      <span class="stat-value green">3</span>
+      <div class="stat-label">Object Classes</div>
+    </div>
+    <div class="stat">
+      <span class="stat-value amber">5s</span>
+      <div class="stat-label">Alert Threshold</div>
+    </div>
+    <div class="stat">
+      <span class="stat-value red">Real-Time</span>
+      <div class="stat-label">Processing</div>
+    </div>
+    <div class="stat">
+      <span class="stat-value">YOLOv8n</span>
+      <div class="stat-label">Model</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ════════════════════════════════════════
+     FEATURES
+════════════════════════════════════════ -->
+<section>
+  <p class="section-label">// Capabilities</p>
+  <h2>Features</h2>
+
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">🔍</div>
+      <h3>Real-Time Detection</h3>
+      <p>YOLOv8 nano model runs inference on every frame — detecting backpacks, handbags, and suitcases with confidence scoring.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🧠</div>
+      <h3>Centroid Tracking</h3>
+      <p>Each object is assigned a unique ID and tracked across frames using nearest-centroid matching. New objects register automatically.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">⏱️</div>
+      <h3>Per-Object Timer</h3>
+      <p>Every tracked object has its own stationary timer. Movement resets the clock. Stillness counts down to the alert threshold.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🚨</div>
+      <h3>Visual Warnings</h3>
+      <p>Unattended objects receive a red bounding box and "UNATTENDED!" label. A full-width warning banner appears at the top of the frame.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🎛️</div>
+      <h3>Configurable Thresholds</h3>
+      <p>Adjust the alert timer, movement tolerance, and confidence threshold via simple constants at the top of <code>main.py</code>.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📹</div>
+      <h3>Webcam or Video File</h3>
+      <p>Works with a live webcam feed or any pre-recorded video file — just change one line in the source configuration.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ════════════════════════════════════════
+     HOW IT WORKS
+════════════════════════════════════════ -->
+<section id="how-it-works">
+  <p class="section-label">// Architecture</p>
+  <h2>How It Works</h2>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-left"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4>1 · Video Frame Capture</h4>
+        <p>OpenCV reads each frame from the webcam or video file at native FPS.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-left"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4>2 · YOLOv8 Inference</h4>
+        <p>The frame is passed to YOLOv8. Results are filtered to backpack / handbag / suitcase with confidence ≥ 0.4.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-left"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4>3 · Centroid Extraction</h4>
+        <p>Each bounding box center is computed and fed to the ObjectTracker.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-left"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4>4 · Track Matching</h4>
+        <p>New centroids are matched to existing tracks by Euclidean distance. Unmatched detections spawn new tracks.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-left"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4>5 · Stationary Timer</h4>
+        <p>If an object moves &gt; 30px → reset timer. If it stays still → timer accumulates. At 5 seconds → UNATTENDED.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-left"><div class="flow-dot"></div></div>
+      <div class="flow-content">
+        <h4>6 · Annotated Output</h4>
+        <p>Frame is drawn with bounding boxes, labels, timers, and warning overlays, then displayed via cv2.imshow().</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ════════════════════════════════════════
+     QUICKSTART
+════════════════════════════════════════ -->
+<section>
+  <p class="section-label">// Installation</p>
+  <h2>Quick Start</h2>
+
+  <div class="code-block">
+<span class="c"># 1. Clone the repo</span>
+<span class="k">git</span> clone https://github.com/YOUR_USERNAME/unattended-object-detection.git
+<span class="k">cd</span> unattended-object-detection
+
+<span class="c"># 2. Create virtual environment</span>
+<span class="k">python</span> -m venv venv
+<span class="k">source</span> venv/bin/activate   <span class="c"># Windows: venv\Scripts\activate</span>
+
+<span class="c"># 3. Install dependencies</span>
+<span class="k">pip</span> install -r requirements.txt
+
+<span class="c"># 4. Run (webcam by default)</span>
+<span class="k">python</span> main.py
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ════════════════════════════════════════
+     TECH STACK
+════════════════════════════════════════ -->
+<section>
+  <p class="section-label">// Stack</p>
+  <h2>Technologies</h2>
+  <div class="tech-grid">
+    <div class="tech-card">
+      <span class="tech-name">Python 3.10+</span>
+      <span class="tech-role">Core language</span>
+    </div>
+    <div class="tech-card">
+      <span class="tech-name">YOLOv8 (Ultralytics)</span>
+      <span class="tech-role">Object detection model</span>
+    </div>
+    <div class="tech-card">
+      <span class="tech-name">OpenCV</span>
+      <span class="tech-role">Video capture &amp; frame drawing</span>
+    </div>
+    <div class="tech-card">
+      <span class="tech-name">NumPy</span>
+      <span class="tech-role">Array &amp; math operations</span>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ════════════════════════════════════════
+     FUTURE
+════════════════════════════════════════ -->
+<section>
+  <p class="section-label">// Roadmap</p>
+  <h2>Future Improvements</h2>
+  <ul class="future-list">
+    <li>Multi-camera support — monitor several feeds simultaneously</li>
+    <li>Person association — link objects to nearby people, alert only when owner walks away</li>
+    <li>Email / SMS alerts via Twilio or SMTP when object is unattended</li>
+    <li>Event logging — save timestamps and screenshots of unattended events</li>
+    <li>Web dashboard — stream annotated video to browser via Flask</li>
+    <li>DeepSORT / ByteTrack — more robust multi-object tracking with Re-ID</li>
+    <li>GPU acceleration — CUDA support for higher FPS on large feeds</li>
+  </ul>
+</section>
+
+
+<!-- ════════════════════════════════════════
+     FOOTER
+════════════════════════════════════════ -->
+<footer>
+  Built with <span>♥</span> using Python · OpenCV · YOLOv8 &nbsp;|&nbsp; AI &amp; Prompt Engineering — Final Project
+</footer>
+
+</body>
+</html>
